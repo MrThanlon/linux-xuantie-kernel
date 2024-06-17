@@ -94,11 +94,21 @@ config RESET_INTEL_GW
 
 config RESET_K210
 	bool "Reset controller driver for Canaan Kendryte K210 SoC"
-	depends on (SOC_CANAAN || COMPILE_TEST) && OF
+	depends on (SOC_CANAAN_K210 || COMPILE_TEST) && OF
 	select MFD_SYSCON
-	default SOC_CANAAN
+	default SOC_CANAAN_K210
 	help
 	  Support for the Canaan Kendryte K210 RISC-V SoC reset controller.
+	  Say Y if you want to control reset signals provided by this
+	  controller.
+
+config RESET_K230
+	bool "Reset controller driver for Canaan Kendryte K230 SoC"
+	depends on ARCH_CANAAN && OF
+	select MFD_SYSCON
+	default ARCH_CANAAN
+	help
+	  Support for the Canaan Kendryte K230 RISC-V SoC reset controller.
 	  Say Y if you want to control reset signals provided by this
 	  controller.
 
@@ -252,16 +262,6 @@ config RESET_SUNXI
 	select RESET_SIMPLE
 	help
 	  This enables the reset driver for Allwinner SoCs.
-
-config RESET_TH1520
-	bool "TH1520 Reset Driver"
-	depends on (ARCH_THEAD || COMPILE_TEST) && OF
-	select MFD_SYSCON
-	default ARCH_THEAD
-	help
-	  Support for the T-HEAD 1520 RISC-V SoC reset controller.
-	  Say Y if you want to control reset signals provided by this
-	  controller.
 
 config RESET_TI_SCI
 	tristate "TI System Control Interface (TI-SCI) reset driver"

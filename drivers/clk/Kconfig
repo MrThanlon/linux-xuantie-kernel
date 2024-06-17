@@ -452,10 +452,17 @@ config COMMON_CLK_FIXED_MMIO
 
 config COMMON_CLK_K210
 	bool "Clock driver for the Canaan Kendryte K210 SoC"
-	depends on OF && RISCV && SOC_CANAAN
-	default SOC_CANAAN
+	depends on OF && RISCV && SOC_CANAAN_K210
+	default SOC_CANAAN_K210
 	help
 	  Support for the Canaan Kendryte K210 RISC-V SoC clocks.
+
+config COMMON_CLK_K230
+	bool "Clock driver for the Canaan Kendryte K210 SoC"
+	depends on OF && RISCV && ARCH_CANAAN
+	default ARCH_CANAAN
+	help
+	  Support for the Canaan Kendryte K230 RISC-V SoC clocks.
 
 config COMMON_CLK_SP7021
 	tristate "Clock driver for Sunplus SP7021 SoC"

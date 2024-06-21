@@ -3946,15 +3946,15 @@ static struct gpio_desc *gpiod_find_by_fwnode(struct fwnode_handle *fwnode,
 	struct gpio_desc *desc = ERR_PTR(-ENOENT);
 
 	if (is_of_node(fwnode)) {
-		dev_dbg(consumer, "using DT '%pfw' for '%s' GPIO lookup\n",
+		dev_info(consumer, "using DT '%pfw' for '%s' GPIO lookup\n",
 			fwnode, con_id);
 		desc = of_find_gpio(to_of_node(fwnode), con_id, idx, lookupflags);
 	} else if (is_acpi_node(fwnode)) {
-		dev_dbg(consumer, "using ACPI '%pfw' for '%s' GPIO lookup\n",
+		dev_info(consumer, "using ACPI '%pfw' for '%s' GPIO lookup\n",
 			fwnode, con_id);
 		desc = acpi_find_gpio(fwnode, con_id, idx, flags, lookupflags);
 	} else if (is_software_node(fwnode)) {
-		dev_dbg(consumer, "using swnode '%pfw' for '%s' GPIO lookup\n",
+		dev_info(consumer, "using swnode '%pfw' for '%s' GPIO lookup\n",
 			fwnode, con_id);
 		desc = swnode_find_gpio(fwnode, con_id, idx, lookupflags);
 	}
@@ -3981,12 +3981,12 @@ static struct gpio_desc *gpiod_find_and_request(struct device *consumer,
 		 * return a result. In that case, use platform lookup as a
 		 * fallback.
 		 */
-		dev_dbg(consumer, "using lookup tables for GPIO lookup\n");
+		dev_info(consumer, "using lookup tables for GPIO lookup\n");
 		desc = gpiod_find(consumer, con_id, idx, &lookupflags);
 	}
 
 	if (IS_ERR(desc)) {
-		dev_dbg(consumer, "No GPIO consumer %s found\n", con_id);
+		dev_info(consumer, "No GPIO consumer %s found\n", con_id);
 		return desc;
 	}
 

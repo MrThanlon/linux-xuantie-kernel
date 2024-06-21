@@ -73,6 +73,13 @@
 #define TXPHY_891_HS_FREQ       (0x96)
 
 
+#define TXPHY_475_M             (196)
+#define TXPHY_475_N             (9)
+#define TXPHY_475_VOC           (0x17)
+#define TXPHY_475_HS_FREQ       (0xa3)
+
+
+
 static inline void dsi_write(struct canaan_dsi *dsi, u32 reg, u32 val)
 {
 	writel(val, dsi->base + reg);
@@ -198,7 +205,6 @@ static u32 canaan_dsi_get_hcomponent_lbcc(struct canaan_dsi *dsi,
 					   u32 hcomponent)
 {
 	u32 frac, lbcc;
-
 	lbcc = hcomponent * dsi->phy_freq / 8;
 
 	frac = lbcc % mode->clock;
@@ -335,10 +341,25 @@ static void canaan_dsi_encoder_enable(struct drm_encoder *encoder)
 			// 144.5M
 			k230_dsi_config_4lan_phy(dsi, TXPHY_891_M, TXPHY_891_N, TXPHY_891_VOC, TXPHY_891_HS_FREQ);
 			// set clk todo
-
 			dsi->phy_freq = 890666;
-			dsi->clk_freq = 148500;
+			dsi->clk_freq = 14850;
 			break;
+		case 39600: 
+		{
+			void *dis_clk = ioremap(0x91100000, 0x1000);
+			u32 reg = 0;
+			u32	div = 14;
+			reg = readl(dis_clk + 0x78);
+			reg = (reg & ~(GENMASK(10, 3))) | (div << 3);         //  8M =    pll1(2376) / 4 / 66
+			reg = reg | (1 << 31);
+			writel(reg, dis_clk + 0x78);
+			// 475.5M
+			k230_dsi_config_4lan_phy(dsi, TXPHY_475_M, TXPHY_475_N, TXPHY_475_VOC, TXPHY_475_HS_FREQ);
+			// set clk todo
+			dsi->phy_freq = 475200;
+			dsi->clk_freq = 39600;
+			break;
+		}
 		default:
 			printk("mipi clk not support \n");
 			break;

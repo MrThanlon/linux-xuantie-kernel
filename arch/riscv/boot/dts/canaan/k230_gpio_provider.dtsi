@@ -457,6 +457,8 @@
 			interrupts = <54 IRQ_TYPE_EDGE_RISING>;
 			hardlock = <0>;
 			status = "disabled";
+			gpio-controller;
+			#gpio-cells = <2>;
 
 			port22: gpio-controller@0 {
 				gpio-controller;
@@ -477,6 +479,8 @@
 			interrupts = <55 IRQ_TYPE_EDGE_RISING>;
 			hardlock = <0>;
 			status = "disabled";
+			gpio-controller;
+			#gpio-cells = <2>;
 
 			port23: gpio-controller@0 {
 				gpio-controller;
@@ -497,6 +501,8 @@
 			interrupts = <56 IRQ_TYPE_EDGE_RISING>;
 			hardlock = <0>;
 			status = "disabled";
+			gpio-controller;
+			#gpio-cells = <2>;
 
 			port24: gpio-controller@0 {
 				gpio-controller;
@@ -517,6 +523,8 @@
 			interrupts = <57 IRQ_TYPE_EDGE_RISING>;
 			hardlock = <0>;
 			status = "disabled";
+			gpio-controller;
+			#gpio-cells = <2>;
 
 			port25: gpio-controller@0 {
 				gpio-controller;

@@ -121,6 +121,21 @@ int of_gpio_get_count(struct device *dev, const char *con_id)
 static int of_gpiochip_match_node_and_xlate(struct gpio_chip *chip, void *data)
 {
 	struct of_phandle_args *gpiospec = data;
+	
+	if (!device_match_of_node(&chip->gpiodev->dev, gpiospec->np)) {
+		printk("of_gpiochip_match_node_and_xlate device_match_of_node error, left: %s %s, right: %s %s\n",
+			chip->gpiodev->dev.of_node->name, chip->gpiodev->dev.of_node->full_name, 
+			gpiospec->np->name, gpiospec->np->full_name
+		);
+	}
+
+	if (!chip->of_xlate) {
+		printk("of_gpiochip_match_node_and_xlate chip->of_xlate error\n");
+	}
+
+	if (chip->of_xlate(chip, gpiospec, NULL) < 0) {
+		printk("of_gpiochip_match_node_and_xlate chip->of_xlate(chip, gpiospec, NULL) >= 0 error\n");
+	}
 
 	return device_match_of_node(&chip->gpiodev->dev, gpiospec->np) &&
 				chip->of_xlate &&
@@ -367,28 +382,33 @@ static struct gpio_desc *of_get_named_gpiod_flags(const struct device_node *np,
 	struct gpio_desc *desc;
 	int ret;
 
+	printk("of_get_named_gpiod_flags np=%s\n", np->full_name);
 	ret = of_parse_phandle_with_args_map(np, propname, "gpio", index,
 					     &gpiospec);
 	if (ret) {
-		pr_debug("%s: can't parse '%s' property of node '%pOF[%d]'\n",
+		pr_err("%s: can't parse '%s' property of node '%pOF[%d]'\n",
 			__func__, propname, np, index);
 		return ERR_PTR(ret);
 	}
+	printk("of_get_named_gpiod_flags phandle=%s\n", gpiospec.np->full_name);
 
 	chip = of_find_gpiochip_by_xlate(&gpiospec);
 	if (!chip) {
+		pr_err("of_find_gpiochip_by_xlate error\n");
 		desc = ERR_PTR(-EPROBE_DEFER);
 		goto out;
 	}
 
 	desc = of_xlate_and_get_gpiod_flags(chip, &gpiospec, flags);
-	if (IS_ERR(desc))
+	if (IS_ERR(desc)) {
+		pr_err("of_xlate_and_get_gpiod_flags error\n");
 		goto out;
+	}
 
 	if (flags)
 		of_gpio_flags_quirks(np, propname, flags, index);
 
-	pr_debug("%s: parsed '%s' property of node '%pOF[%d]' - status (%d)\n",
+	pr_info("%s: parsed '%s' property of node '%pOF[%d]' - status (%d)\n",
 		 __func__, propname, np, index,
 		 PTR_ERR_OR_ZERO(desc));
 
@@ -638,6 +658,8 @@ struct gpio_desc *of_find_gpio(struct device_node *np, const char *con_id,
 		else
 			snprintf(prop_name, sizeof(prop_name), "%s",
 				 gpio_suffixes[i]);
+
+		printk("%s prop_name=%s\n", __func__, prop_name);
 
 		desc = of_get_named_gpiod_flags(np, prop_name, idx, &of_flags);
 

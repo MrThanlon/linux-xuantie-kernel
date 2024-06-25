@@ -35,13 +35,6 @@
 	status = "okay";
 };
 
-&gpio9 {
-	status = "okay";
-};
-
-&gpio31 {
-	status = "okay";
-};
 &mmc_sd1{
     status = "okay";
     no-1-8-v;

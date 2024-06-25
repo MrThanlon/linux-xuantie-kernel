@@ -304,6 +304,8 @@ static irqreturn_t edt_ft5x06_ts_isr(int irq, void *dev_id)
 	int i, type, x, y, id;
 	int error;
 
+	dev_info(dev, "%s\n", __func__);
+
 	memset(rdbuf, 0, sizeof(rdbuf));
 	error = regmap_bulk_read(tsdata->regmap, tsdata->tdata_cmd, rdbuf,
 				 tsdata->tdata_len);

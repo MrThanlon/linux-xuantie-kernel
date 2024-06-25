@@ -35,30 +35,35 @@
 &usb1 {
 	status = "okay";
 };
-
+#if !DW_GPIO
+&gpio16 {
+	status = "okay";
+};
 &gpio22 {
 	status = "okay";
 };
-
 &gpio23 {
 	status = "okay";
 };
-
 &gpio24 {
 	status = "okay";
 };
-
 &gpio25 {
 	status = "okay";
 };
-
+#endif
 &dsi {
 	panel@0 {
 		panel-width-mm = <480>;
 		panel-height-mm = <800>;
 		panel-dsi-lane = <2>;
-		dsi_reset-gpios = <&port24 0 GPIO_ACTIVE_HIGH>;
-		backlight_gpio-gpios = <&port25 0 GPIO_ACTIVE_HIGH>;
+		#if DW_GPIO
+		dsi_reset-gpios = <&gpio0_ports 24 GPIO_ACTIVE_HIGH>;
+		backlight_gpio-gpios = <&gpio0_ports 25 GPIO_ACTIVE_HIGH>;
+		#else
+		dsi_reset-gpios = <&gpio24 0 GPIO_ACTIVE_HIGH>;
+		backlight_gpio-gpios = <&gpio25 0 GPIO_ACTIVE_HIGH>;
+		#endif
 
 		panel-init-sequence = [
 			39 00 06 ff 77 01 00 00 13
@@ -132,8 +137,14 @@
 	touchscreen@38 {
 		compatible = "edt,edt-ft5306";
 		reg = <0x38>;
-		interrupt-parent = <&port23>;
+		#if DW_GPIO
+		reset-gpios = <&gpio0_ports 23 GPIO_ACTIVE_LOW>;
+		interrupt-parent = <&gpio0_ports>;
+		interrupts = <22 IRQ_TYPE_EDGE_FALLING>;
+		#else
+		reset-gpios = <&gpio23 0 GPIO_ACTIVE_LOW>;
+		interrupt-parent = <&gpio22>;
 		interrupts = <0 IRQ_TYPE_EDGE_FALLING>;
-		reset-gpios = <&gpio22 0 GPIO_ACTIVE_LOW>;
+		#endif
 	};
 };

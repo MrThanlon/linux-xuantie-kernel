@@ -408,6 +408,10 @@ static int dwapb_gpio_set_debounce(struct gpio_chip *gc,
 	return 0;
 }
 
+static int dwapb_gpio_set_config_default(struct gpio_chip *gc, unsigned offset, unsigned long config) {
+	return -ENOTSUPP;
+}
+
 static int dwapb_gpio_set_config(struct gpio_chip *gc, unsigned offset,
 				 unsigned long config)
 {
@@ -416,7 +420,7 @@ static int dwapb_gpio_set_config(struct gpio_chip *gc, unsigned offset,
 		return dwapb_gpio_set_debounce(gc, offset, debounce);
 	}
 
-	return gpiochip_generic_config(gc, offset, config);
+	return dwapb_gpio_set_config_default(gc, offset, config);
 }
 
 static int dwapb_convert_irqs(struct dwapb_gpio_port_irqchip *pirq,
@@ -492,6 +496,13 @@ err_kfree_pirq:
 	devm_kfree(gpio->dev, pirq);
 }
 
+static int dwapb_gpio_request(struct gpio_chip *gc, unsigned int offset) {
+	return 0;
+}
+
+static void dwapb_gpio_free(struct gpio_chip *gc, unsigned int offset) {
+}
+
 static int dwapb_gpio_add_port(struct dwapb_gpio *gpio,
 			       struct dwapb_port_property *pp,
 			       unsigned int offs)
@@ -526,14 +537,16 @@ static int dwapb_gpio_add_port(struct dwapb_gpio *gpio,
 	port->gc.fwnode = pp->fwnode;
 	port->gc.ngpio = pp->ngpio;
 	port->gc.base = pp->gpio_base;
-	port->gc.request = gpiochip_generic_request;
-	port->gc.free = gpiochip_generic_free;
+	// port->gc.request = gpiochip_generic_request;
+	// port->gc.free = gpiochip_generic_free;
+	port->gc.request = dwapb_gpio_request;
+	port->gc.free = dwapb_gpio_free;
 
 	/* Only port A support debounce */
 	if (pp->idx == 0)
 		port->gc.set_config = dwapb_gpio_set_config;
 	else
-		port->gc.set_config = gpiochip_generic_config;
+		port->gc.set_config = dwapb_gpio_set_config_default;
 
 	/* Only port A can provide interrupts in all configurations of the IP */
 	if (pp->idx == 0)

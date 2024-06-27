@@ -35,3 +35,7 @@
 &usb1 {
 	status = "okay";
 };
+
+&i2c3 {
+	status = "okay";
+};

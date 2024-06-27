@@ -534,6 +534,12 @@ static u8 k230_clk_composite_get_parent(struct clk_hw *hw)
 	       k230_composite->mux_mask;
 }
 
+static int k230_clk_composite_determine_rate(struct clk_hw *hw,
+					  struct clk_rate_request *req) {
+	// TODO
+	return 0;
+}
+
 static int k230_clk_composite_init(struct clk_hw *hw)
 {
 	if (k230_clk_composite_is_enable(hw)) {
@@ -549,6 +555,7 @@ static int k230_clk_composite_init(struct clk_hw *hw)
 static int k230_debugfs_clk_composite_init(struct clk_hw *hw);
 
 static const struct clk_ops k230_clk_ops = {
+    // .determine_rate = k230_clk_composite_determine_rate,
 	.set_parent = k230_clk_composite_set_parent,
 	.get_parent = k230_clk_composite_get_parent,
 	.recalc_rate = k230_clk_composite_recalc_rate,

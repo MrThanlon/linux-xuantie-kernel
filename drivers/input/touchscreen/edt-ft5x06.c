@@ -304,8 +304,6 @@ static irqreturn_t edt_ft5x06_ts_isr(int irq, void *dev_id)
 	int i, type, x, y, id;
 	int error;
 
-	dev_info(dev, "%s\n", __func__);
-
 	memset(rdbuf, 0, sizeof(rdbuf));
 	error = regmap_bulk_read(tsdata->regmap, tsdata->tdata_cmd, rdbuf,
 				 tsdata->tdata_len);
@@ -1205,13 +1203,13 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client)
 	if (error)
 		return error;
 
-	// tsdata->reset_gpio = gpiod_get_optional(&client->dev, "reset", GPIOD_OUT_HIGH);
-	tsdata->reset_gpio = devm_gpiod_get_optional(&client->dev, "reset", GPIOD_OUT_HIGH);
+	tsdata->reset_gpio = devm_gpiod_get_optional(&client->dev,
+						     "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(tsdata->reset_gpio)) {
 		error = PTR_ERR(tsdata->reset_gpio);
 		dev_err(&client->dev,
 			"Failed to request GPIO reset pin, error %d\n", error);
-		tsdata->reset_gpio = NULL;
+		return error;
 	}
 
 	tsdata->wake_gpio = devm_gpiod_get_optional(&client->dev,
@@ -1220,7 +1218,7 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client)
 		error = PTR_ERR(tsdata->wake_gpio);
 		dev_err(&client->dev,
 			"Failed to request GPIO wake pin, error %d\n", error);
-		tsdata->wake_gpio = NULL;
+		return error;
 	}
 
 	/*
@@ -1297,7 +1295,7 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client)
 			     tsdata->report_rate);
 	}
 
-	dev_info(&client->dev,
+	dev_dbg(&client->dev,
 		"Model \"%s\", Rev. \"%s\", %dx%d sensors\n",
 		tsdata->name, tsdata->fw_version, tsdata->num_x, tsdata->num_y);
 
@@ -1342,7 +1340,7 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client)
 
 	edt_ft5x06_ts_prepare_debugfs(tsdata, dev_driver_string(&client->dev));
 
-	dev_info(&client->dev,
+	dev_dbg(&client->dev,
 		"EDT FT5x06 initialized: IRQ %d, WAKE pin %d, Reset pin %d.\n",
 		client->irq,
 		tsdata->wake_gpio ? desc_to_gpio(tsdata->wake_gpio) : -1,

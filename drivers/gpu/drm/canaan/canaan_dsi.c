@@ -6,6 +6,8 @@
  *
  */
 
+#include "drm/drm_bridge.h"
+#include "drm/drm_of.h"
 #include <linux/clk.h>
 #include <linux/component.h>
 #include <linux/crc-ccitt.h>
@@ -410,8 +412,12 @@ static void canaan_dsi_encoder_disable(struct drm_encoder *encoder)
 static int canaan_dsi_get_modes(struct drm_connector *connector)
 {
 	struct canaan_dsi *dsi = connector_to_canaan_dsi(connector);
-
-	return drm_panel_get_modes(dsi->panel, connector);
+	dev_info(dsi->dev, "get mode\n");
+	if (dsi->panel) {
+		return drm_panel_get_modes(dsi->panel, connector);
+	} else {
+		return drm_bridge_get_modes(dsi->bridge, connector);
+	}
 }
 
 static const struct drm_connector_helper_funcs
@@ -424,7 +430,7 @@ canaan_dsi_connector_detect(struct drm_connector *connector, bool force)
 {
 	struct canaan_dsi *dsi = connector_to_canaan_dsi(connector);
 
-	return dsi->panel ? connector_status_connected :
+	return (dsi->panel || dsi->bridge) ? connector_status_connected :
 			    connector_status_disconnected;
 }
 
@@ -445,19 +451,38 @@ static const struct drm_encoder_helper_funcs canaan_dsi_enc_helper_funcs = {
 static int canaan_dsi_attach(struct mipi_dsi_host *host,
 			     struct mipi_dsi_device *device)
 {
+	int ret = 0;
 	struct canaan_dsi *dsi = host_to_canaan_dsi(host);
-	struct drm_panel *panel = of_drm_find_panel(device->dev.of_node);
+	ret = drm_of_find_panel_or_bridge(dsi->dev->of_node, 1, -1, &dsi->panel, &dsi->bridge);
+    if (!dsi->panel && !dsi->bridge)
+		return ret;
 
-	if (IS_ERR(panel))
-		return PTR_ERR(panel);
+	if (dsi->panel) {
+		drm_connector_helper_add(&dsi->connector,
+					&canaan_dsi_connector_helper_funcs);
+		ret = drm_connector_init(dsi->drm, &dsi->connector,
+					&canaan_dsi_connector_funcs,
+					DRM_MODE_CONNECTOR_DSI);
+		if (ret) {
+			dev_err(dsi->dev, "Couldn't initialise the DSI connector\n");
+			goto err_cleanup_connector;
+		}
+
+		drm_connector_attach_encoder(&dsi->connector, &dsi->encoder);
+	}
+
+	if (dsi->bridge)
+	    drm_bridge_attach(&dsi->encoder, dsi->bridge, NULL, DRM_BRIDGE_ATTACH_NO_CONNECTOR);
 
 	dsi->connector.status = connector_status_connected;
-	dsi->panel = panel;
 	dsi->device = device;
 
 	dev_info(host->dev, "Attached device %s\n", device->name);
 
 	return 0;
+err_cleanup_connector:
+	drm_encoder_cleanup(&dsi->encoder);
+	return ret;
 }
 
 static int canaan_dsi_detach(struct mipi_dsi_host *host,
@@ -467,6 +492,7 @@ static int canaan_dsi_detach(struct mipi_dsi_host *host,
 
 	dsi->panel = NULL;
 	dsi->device = NULL;
+	dsi->bridge = NULL;
 
 	return 0;
 }
@@ -524,25 +550,9 @@ static int canaan_dsi_bind(struct device *dev, struct device *master,
 	}
 	dsi->encoder.possible_crtcs = BIT(0);
 
-	drm_connector_helper_add(&dsi->connector,
-				 &canaan_dsi_connector_helper_funcs);
-	ret = drm_connector_init(drm, &dsi->connector,
-				 &canaan_dsi_connector_funcs,
-				 DRM_MODE_CONNECTOR_DSI);
-	if (ret) {
-		dev_err(dsi->dev, "Couldn't initialise the DSI connector\n");
-		goto err_cleanup_connector;
-	}
-
-	drm_connector_attach_encoder(&dsi->connector, &dsi->encoder);
-
 	dsi->drm = drm;
 
 	return 0;
-
-err_cleanup_connector:
-	drm_encoder_cleanup(&dsi->encoder);
-	return ret;
 }
 
 static void canaan_dsi_unbind(struct device *dev, struct device *master,

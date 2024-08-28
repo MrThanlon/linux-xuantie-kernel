@@ -585,7 +585,7 @@
 			status = "okay";
 
 			background = <0xffffff>;
-			vth_line = <11>;
+			vth_line = <10>;
 
 			vo_out: port {
 				#address-cells = <1>;

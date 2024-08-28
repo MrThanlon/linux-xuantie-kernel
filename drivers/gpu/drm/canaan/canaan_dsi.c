@@ -71,8 +71,8 @@
 #define TXPHY_445_5_VOC (0x17)
 #define TXPHY_445_5_HS_FREQ (0x96)
 
-#define TXPHY_891_M (165)
-#define TXPHY_891_N (8)
+#define TXPHY_891_M (295)
+#define TXPHY_891_N (15)
 #define TXPHY_891_VOC (0x09)
 #define TXPHY_891_HS_FREQ (0x96)
 
@@ -253,6 +253,16 @@ static void canaan_dsi_set_dpi_timing(struct canaan_dsi *dsi,
 	dsi_write(dsi, VID_VFP_LINES, vfp);
 	// set vline
 	dsi_write(dsi, VID_VACTIVE_LINES, vact);
+
+	dev_info(dsi->dev, "htotal: %u\n", htotal);
+	dev_info(dsi->dev, "hsa: %u\n", hsa);
+	dev_info(dsi->dev, "hbp: %u\n", hbp);
+	dev_info(dsi->dev, "hact: %u\n", hact);
+	dev_info(dsi->dev, "lbcc: %u\n", lbcc);
+	dev_info(dsi->dev, "vsa: %u\n", vsa);
+	dev_info(dsi->dev, "vbp: %u\n", vbp);
+	dev_info(dsi->dev, "vfp: %u\n", vfp);
+	dev_info(dsi->dev, "vact: %u\n", vact);
 }
 
 void canaan_dsi_lpdt_init(struct canaan_dsi *dsi, struct drm_display_mode *mode)
@@ -319,7 +329,7 @@ static void canaan_dsi_encoder_enable(struct drm_encoder *encoder)
 	struct drm_display_mode *adjusted_mode =
 		&encoder->crtc->state->adjusted_mode;
 	struct mipi_dsi_device *device = dsi->device;
-	int dsi_test_en = 0;
+	int dsi_test_en = 1;
 
 	DRM_DEBUG_DRIVER("Enabling DSI output\n");
 
@@ -333,14 +343,25 @@ static void canaan_dsi_encoder_enable(struct drm_encoder *encoder)
 		dsi->phy_freq = 445500;
 		dsi->clk_freq = 74250;
 		break;
-	case 148500:
+	case 148500: {
 		// 144.5M
+		void *dis_clk = ioremap(0x91100000, 0x1000);
+		u32 reg = 0;
+		u32 div = 3;
+
+		reg = readl(dis_clk + 0x78);
+		reg = (reg & ~(GENMASK(10, 3))) |
+		      (div << 3); //  8M =    pll1(2376) / 4 / 66
+		reg = reg | (1 << 31);
+		writel(reg, dis_clk + 0x78);
+
 		k230_dsi_config_4lan_phy(dsi, TXPHY_891_M, TXPHY_891_N,
 					 TXPHY_891_VOC, TXPHY_891_HS_FREQ);
 		// set clk todo
 		dsi->phy_freq = 890666;
 		dsi->clk_freq = 14850;
 		break;
+	}
 	case 39600: {
 		void *dis_clk = ioremap(0x91100000, 0x1000);
 		u32 reg = 0;
@@ -451,28 +472,7 @@ static const struct drm_encoder_helper_funcs canaan_dsi_enc_helper_funcs = {
 static int canaan_dsi_attach(struct mipi_dsi_host *host,
 			     struct mipi_dsi_device *device)
 {
-	int ret = 0;
 	struct canaan_dsi *dsi = host_to_canaan_dsi(host);
-	ret = drm_of_find_panel_or_bridge(dsi->dev->of_node, 1, -1, &dsi->panel, &dsi->bridge);
-    if (!dsi->panel && !dsi->bridge)
-		return ret;
-
-	if (dsi->panel) {
-		drm_connector_helper_add(&dsi->connector,
-					&canaan_dsi_connector_helper_funcs);
-		ret = drm_connector_init(dsi->drm, &dsi->connector,
-					&canaan_dsi_connector_funcs,
-					DRM_MODE_CONNECTOR_DSI);
-		if (ret) {
-			dev_err(dsi->dev, "Couldn't initialise the DSI connector\n");
-			goto err_cleanup_connector;
-		}
-
-		drm_connector_attach_encoder(&dsi->connector, &dsi->encoder);
-	}
-
-	if (dsi->bridge)
-	    drm_bridge_attach(&dsi->encoder, dsi->bridge, NULL, DRM_BRIDGE_ATTACH_NO_CONNECTOR);
 
 	dsi->connector.status = connector_status_connected;
 	dsi->device = device;
@@ -480,9 +480,6 @@ static int canaan_dsi_attach(struct mipi_dsi_host *host,
 	dev_info(host->dev, "Attached device %s\n", device->name);
 
 	return 0;
-err_cleanup_connector:
-	drm_encoder_cleanup(&dsi->encoder);
-	return ret;
 }
 
 static int canaan_dsi_detach(struct mipi_dsi_host *host,
@@ -552,7 +549,32 @@ static int canaan_dsi_bind(struct device *dev, struct device *master,
 
 	dsi->drm = drm;
 
+	ret = drm_of_find_panel_or_bridge(dsi->dev->of_node, 1, -1, &dsi->panel, &dsi->bridge);
+    if (!dsi->panel && !dsi->bridge)
+		return ret;
+
+	if (dsi->panel) {
+		drm_connector_helper_add(&dsi->connector,
+					&canaan_dsi_connector_helper_funcs);
+		ret = drm_connector_init(dsi->drm, &dsi->connector,
+					&canaan_dsi_connector_funcs,
+					DRM_MODE_CONNECTOR_DSI);
+		if (ret) {
+			dev_err(dsi->dev, "Couldn't initialise the DSI connector\n");
+			goto err_cleanup_connector;
+		}
+
+		drm_connector_attach_encoder(&dsi->connector, &dsi->encoder);
+	}
+
+	if (dsi->bridge)
+	    drm_bridge_attach(&dsi->encoder, dsi->bridge, NULL, DRM_BRIDGE_ATTACH_NO_CONNECTOR);
+
 	return 0;
+
+err_cleanup_connector:
+	drm_encoder_cleanup(&dsi->encoder);
+	return ret;
 }
 
 static void canaan_dsi_unbind(struct device *dev, struct device *master,

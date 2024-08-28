@@ -61,6 +61,7 @@ struct lt9611 {
 
 	u8 edid_buf[EDID_SEG_SIZE];
 	u32 vic;
+	u32 pcr_m;
 };
 
 #define LT9611_PAGE_CONTROL	0xff
@@ -96,13 +97,13 @@ struct lt9611_mode {
 
 static struct lt9611_mode lt9611_modes[] = {
 	//{ 3840, 2160, 30, 4, 2 }, /* 3840x2160 24bit 30Hz 4Lane 2ports */
-	//{ 1920, 1080, 60, 4, 1 }, /* 1080P 24bit 60Hz 4lane 1port */
+	{ 1920, 1080, 60, 4, 1 }, /* 1080P 24bit 60Hz 4lane 1port */
 	{ 1920, 1080, 30, 4, 1 }, /* 1080P 24bit 30Hz 4lane 1port */
-	{ 1280, 720, 60, 4, 1 },
-	{ 1280, 720, 50, 4, 1 },
-	{ 720, 480, 60, 4, 1 },
-	{ 720, 576, 50, 2, 1 },
-	{ 640, 480, 60, 2, 1 },
+	// { 1280, 720, 60, 4, 1 },
+	// { 1280, 720, 50, 4, 1 },
+	// { 720, 480, 60, 4, 1 },
+	// { 720, 576, 50, 2, 1 },
+	// { 640, 480, 60, 2, 1 },
 };
 
 static struct lt9611 *bridge_to_lt9611(struct drm_bridge *bridge)
@@ -140,17 +141,26 @@ static int lt9611_mipi_input_digital(struct lt9611 *lt9611,
 				     const struct drm_display_mode *mode)
 {
 	struct reg_sequence reg_cfg[] = {
-		{ 0x8300, LT9611_4LANES },
-		{ 0x830a, 0x00 },
-		{ 0x824f, 0x80 },
-		{ 0x8250, 0x10 },
-		{ 0x8303, 0x00 },
-		{ 0x8302, 0x08 },
-		{ 0x8306, 0x08 },
+		// { 0x8300, LT9611_4LANES },
+		// { 0x830a, 0x00 },
+		// { 0x824f, 0x80 },
+		// { 0x8250, 0x10 },
+		// { 0x8303, 0x00 },
+		// { 0x8302, 0x08 },
+		// { 0x8306, 0x08 },
+		{0x8250, 0x14},
+		{0x8300, 0x60},
+		{0x8303, 0x4f},
+		{0x8304, 0x00},
+		{0x8307, 0x40},
+		{0x824f, 0x80},
+		{0x8302, 0x08},
+		{0x8306, 0x08},
+		{0x830a, 0x00}
 	};
 
 	if (mode->hdisplay == 3840)
-		reg_cfg[1].def = 0x03;
+		reg_cfg[8].def = 0x03;
 
 	return regmap_multi_reg_write(lt9611->regmap, reg_cfg, ARRAY_SIZE(reg_cfg));
 }
@@ -173,6 +183,17 @@ static void lt9611_mipi_video_setup(struct lt9611 *lt9611,
 	vsync_len = mode->vsync_end - mode->vsync_start;
 	vfront_porch = mode->vsync_start - mode->vdisplay;
 	vsync_porch = vsync_len + mode->vtotal - mode->vsync_end;
+
+	dev_info(lt9611->dev, "h_total: %u\n", h_total);
+	dev_info(lt9611->dev, "hactive: %u\n", hactive);
+	dev_info(lt9611->dev, "hsync_len: %u\n", hsync_len);
+	dev_info(lt9611->dev, "hfront_porch: %u\n", hfront_porch);
+	dev_info(lt9611->dev, "hsync_porch: %u\n", hsync_porch);
+	dev_info(lt9611->dev, "v_total: %u\n", v_total);
+	dev_info(lt9611->dev, "vactive: %u\n", vactive);
+	dev_info(lt9611->dev, "vsync_len: %u\n", vsync_len);
+	dev_info(lt9611->dev, "vfront_porch: %u\n", vfront_porch);
+	dev_info(lt9611->dev, "vsync_porch: %u\n", vsync_porch);
 
 	regmap_write(lt9611->regmap, 0x830d, (u8)(v_total / 256));
 	regmap_write(lt9611->regmap, 0x830e, (u8)(v_total % 256));
@@ -215,11 +236,14 @@ static void lt9611_pcr_setup(struct lt9611 *lt9611, const struct drm_display_mod
 
 		/* stage 2 */
 		{ 0x834a, 0x40 },
-		{ 0x831d, 0x10 },
+		// { 0x831d, 0x10 },
 
 		/* MK limit */
 		{ 0x832d, 0x40 },
 		{ 0x8331, 0x08 },
+		
+		// ???
+		{0x831d, 0x10},
 	};
 	const struct reg_sequence reg_cfg2[] = {
 		{ 0x830b, 0x03 },
@@ -241,13 +265,12 @@ static void lt9611_pcr_setup(struct lt9611 *lt9611, const struct drm_display_mod
 		regmap_write(lt9611->regmap, 0x8326, 0x14);
 		break;
 	case 1920:
-		regmap_write(lt9611->regmap, 0x8326, 0x36);
+		regmap_write(lt9611->regmap, 0x8326, lt9611->pcr_m);
 		break;
 	case 3840:
 		regmap_multi_reg_write(lt9611->regmap, reg_cfg2, ARRAY_SIZE(reg_cfg2));
 		break;
 	}
-	regmap_write(lt9611->regmap, 0x8326, 0x36);
 
 	/* pcr rst */
 	regmap_write(lt9611->regmap, 0x8011, 0x5a);
@@ -257,6 +280,7 @@ static void lt9611_pcr_setup(struct lt9611 *lt9611, const struct drm_display_mod
 static int lt9611_pll_setup(struct lt9611 *lt9611, const struct drm_display_mode *mode)
 {
 	unsigned int pclk = mode->clock;
+	u32 postdiv = 0;
 	const struct reg_sequence reg_cfg[] = {
 		/* txpll init */
 		{ 0x8123, 0x40 },
@@ -265,7 +289,7 @@ static int lt9611_pll_setup(struct lt9611 *lt9611, const struct drm_display_mode
 		{ 0x8126, 0x55 },
 		{ 0x812c, 0x37 },
 		{ 0x812f, 0x01 },
-		{ 0x8126, 0x55 },
+		// { 0x8126, 0x55 },
 		{ 0x8127, 0x66 },
 		{ 0x8128, 0x88 },
 		{ 0x812a, 0x20 },
@@ -273,37 +297,46 @@ static int lt9611_pll_setup(struct lt9611 *lt9611, const struct drm_display_mode
 
 	regmap_multi_reg_write(lt9611->regmap, reg_cfg, ARRAY_SIZE(reg_cfg));
 
-	if (pclk > 150000)
+	if (pclk > 150000) {
 		regmap_write(lt9611->regmap, 0x812d, 0x88);
-	else if (pclk > 80000)
+		postdiv = 1;
+	}
+	else if (pclk > 80000) {
 		regmap_write(lt9611->regmap, 0x812d, 0x99);
-	else
+		postdiv = 2;
+	}
+	else {
 		regmap_write(lt9611->regmap, 0x812d, 0xaa);
+		postdiv = 4;
+	}
+
+	lt9611->pcr_m = ((pclk * 5 * postdiv) / 27000) - 1;
 
 	regmap_write(lt9611->regmap, 0x832d, 0x40);
 	regmap_write(lt9611->regmap, 0x8331, 0x08);
-	regmap_write(lt9611->regmap, 0x8326, 0x80|0x36);
+	regmap_write(lt9611->regmap, 0x8326, 0x80 | lt9611->pcr_m);
 	/*
 	 * first divide pclk by 2 first
 	 *  - write divide by 64k to 19:16 bits which means shift by 17
 	 *  - write divide by 256 to 15:8 bits which means shift by 9
 	 *  - write remainder to 7:0 bits, which means shift by 1
 	 */
-	regmap_write(lt9611->regmap, 0x82e3, pclk >> 17); /* pclk[19:16] */
-	regmap_write(lt9611->regmap, 0x82e4, 145);  /* pclk[15:8]  */
-	regmap_write(lt9611->regmap, 0x82e5, 5);  /* pclk[7:0]   */
+	regmap_write(lt9611->regmap, 0x82e3, pclk / 65536); /* pclk[19:16] */
+	regmap_write(lt9611->regmap, 0x82e4, pclk / 256);  /* pclk[15:8]  */
+	regmap_write(lt9611->regmap, 0x82e5, pclk % 256);  /* pclk[7:0]   */
 
 	regmap_write(lt9611->regmap, 0x82de, 0x20);
 	regmap_write(lt9611->regmap, 0x82de, 0xe0);
 
+	regmap_write(lt9611->regmap, 0x8011, 0x5a);
+	regmap_write(lt9611->regmap, 0x8011, 0xfa);
+
+	regmap_write(lt9611->regmap, 0x8016, 0xf2);
+
 	regmap_write(lt9611->regmap, 0x8018, 0xdc);
 	regmap_write(lt9611->regmap, 0x8018, 0xfc);
 
-	regmap_write(lt9611->regmap, 0x8016, 0xf1);
 	regmap_write(lt9611->regmap, 0x8016, 0xf3);
-
-	regmap_write(lt9611->regmap, 0x8011, 0x5a);
-	regmap_write(lt9611->regmap, 0x8011, 0xfa);
 	return 0;
 }
 
@@ -704,7 +737,7 @@ static int lt9611_connector_get_modes(struct drm_connector *connector)
 	printk("lt9611_connector_get_modes \n");
 	lt9611_power_on(lt9611);
 	edid = drm_do_get_edid(connector, lt9611_get_edid_block, lt9611);
-	drm_mode_connector_update_edid_property(connector, edid);
+	drm_connector_update_edid_property(connector, edid);
 	count = drm_add_edid_modes(connector, edid);
 	kfree(edid);
 
@@ -842,7 +875,7 @@ static void lt9611_bridge_detach(struct drm_bridge *bridge)
 static int lt9611_connector_init(struct drm_bridge *bridge, struct lt9611 *lt9611)
 {
 	int ret;
-
+	printk("%s:%d\n", __func__, __LINE__);
 	ret = drm_connector_init(bridge->dev, &lt9611->connector,
 				 &lt9611_bridge_connector_funcs,
 				 DRM_MODE_CONNECTOR_HDMIA);
@@ -874,9 +907,11 @@ static int lt9611_bridge_attach(struct drm_bridge *bridge, enum drm_bridge_attac
 	//}
 
 	/* Attach primary DSI */
-	lt9611->dsi0 = lt9611_attach_dsi(lt9611, lt9611->dsi0_node);
-	if (IS_ERR(lt9611->dsi0))
-		return PTR_ERR(lt9611->dsi0);
+	if (lt9611->dsi0_node) {
+		lt9611->dsi0 = lt9611_attach_dsi(lt9611, lt9611->dsi0_node);
+		if (IS_ERR(lt9611->dsi0))
+			return PTR_ERR(lt9611->dsi0);
+	}
 
 	/* Attach secondary DSI, if specified */
 	if (lt9611->dsi1_node) {
@@ -951,8 +986,8 @@ static void lt9611_bridge_mode_set(struct drm_bridge *bridge,
 
 	lt9611_mipi_input_digital(lt9611, mode);
 	lt9611_pll_setup(lt9611, mode);
-	lt9611_mipi_video_setup(lt9611, mode);
 	lt9611_pcr_setup(lt9611, mode);
+	lt9611_mipi_video_setup(lt9611, mode);
 	drm_mode_copy(&lt9611->mode, mode);
 
 	ret = drm_hdmi_avi_infoframe_from_display_mode(&avi_frame,
@@ -1004,16 +1039,11 @@ static int lt9611_parse_dt(struct device *dev,
 	struct device_node *np = dev->of_node;
 	struct device_node *node, *np1;
 	lt9611->dsi0_node = of_graph_get_remote_node(dev->of_node, 0, -1);
-	if (!lt9611->dsi0_node) {
-		dev_err(lt9611->dev, "failed to get remote node for primary dsi\n");
+	lt9611->dsi1_node = of_graph_get_remote_node(dev->of_node, 1, -1);
+	if (!lt9611->dsi0_node && !lt9611->dsi1_node) {
+		dev_err(lt9611->dev, "failed to get remote node for dsi\n");
 		return -ENODEV;
 	}
-	printk("dsi0_node name 1%s\n", lt9611->dsi0_node->name);
-	node = of_graph_get_endpoint_by_regs(dev->of_node, 0, 0);
-	np1 = of_graph_get_remote_port(node);
-	printk("get_remote_port name 1%s\n", np1->name);
-	np1 = of_graph_get_remote_port_parent(node);
-	printk("get_remote_por_parent name 1%s\n", np1->name);
 
 	//lt9611->dsi1_node = of_graph_get_remote_node(dev->of_node, 1, -1);
 

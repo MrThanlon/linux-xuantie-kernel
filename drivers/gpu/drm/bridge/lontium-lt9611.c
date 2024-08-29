@@ -31,6 +31,22 @@
 
 #define LT9611_4LANES	0
 
+#if 0
+// for debug
+static int debug_regmap_multi_write(struct regmap *m, const struct reg_sequence *regs, int num_regs) {
+	for (unsigned i = 0; i < num_regs; i++) {
+		printk("w %04x %02x\n", regs[i].reg, regs[i].def);
+	}
+	return regmap_multi_reg_write(m, regs, num_regs);
+}
+static int debug_regmap_write(struct regmap *map, unsigned int reg, unsigned int val) {
+	printk("w %04x %02x\n", reg, val);	
+	return regmap_write(map, reg, val);
+}
+#define regmap_multi_reg_write debug_regmap_multi_write
+#define regmap_write debug_regmap_write
+#endif
+
 struct lt9611 {
 	struct device *dev;
 	struct drm_bridge bridge;

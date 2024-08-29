@@ -329,7 +329,7 @@ static void canaan_dsi_encoder_enable(struct drm_encoder *encoder)
 	struct drm_display_mode *adjusted_mode =
 		&encoder->crtc->state->adjusted_mode;
 	struct mipi_dsi_device *device = dsi->device;
-	int dsi_test_en = 1;
+	int dsi_test_en = 0;
 
 	DRM_DEBUG_DRIVER("Enabling DSI output\n");
 

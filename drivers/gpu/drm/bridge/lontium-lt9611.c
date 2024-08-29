@@ -337,7 +337,9 @@ static int lt9611_pll_setup(struct lt9611 *lt9611, const struct drm_display_mode
 	 *  - write divide by 256 to 15:8 bits which means shift by 9
 	 *  - write remainder to 7:0 bits, which means shift by 1
 	 */
+	pclk = pclk / 2;
 	regmap_write(lt9611->regmap, 0x82e3, pclk / 65536); /* pclk[19:16] */
+	pclk = pclk % 65536;
 	regmap_write(lt9611->regmap, 0x82e4, pclk / 256);  /* pclk[15:8]  */
 	regmap_write(lt9611->regmap, 0x82e5, pclk % 256);  /* pclk[7:0]   */
 
@@ -422,11 +424,12 @@ end:
 
 static void lt9611_hdmi_tx_digital(struct lt9611 *lt9611)
 {
-	regmap_write(lt9611->regmap, 0x8443, 0x46 - lt9611->vic);
-	regmap_write(lt9611->regmap, 0x8447, lt9611->vic);
+	regmap_write(lt9611->regmap, 0x8443, 0x21);
+	regmap_write(lt9611->regmap, 0x8445, 0x40);
+	regmap_write(lt9611->regmap, 0x8447, 0x34);
 	regmap_write(lt9611->regmap, 0x843d, 0x0a); /* UD1 infoframe */
 
-	regmap_write(lt9611->regmap, 0x82d6, 0x8c);
+	regmap_write(lt9611->regmap, 0x82d6, 0x8e);
 	regmap_write(lt9611->regmap, 0x82d7, 0x04);
 }
 

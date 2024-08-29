@@ -4,7 +4,6 @@
  */
 
 #include "k230.dtsi"
-// #include "display-st7701-480x800.dtsi"
 
 / {
 	model = "Canaan CanMV-K230";
@@ -50,13 +49,6 @@
 
 &i2c4 {
 	status = "okay";
-	touchscreen@38 {
-		compatible = "edt,edt-ft5306";
-		reg = <0x38>;
-		reset-gpios = <&gpio0_ports 21 GPIO_ACTIVE_LOW>;
-		interrupt-parent = <&gpio0_ports>;
-		interrupts = <22 IRQ_TYPE_EDGE_FALLING>;
-	};
 
 	lt9611: hdmi-bridge@3b {
 		compatible = "lontium,lt9611";
@@ -107,4 +99,8 @@
 			};
 		};
 	};
+};
+
+&vo {
+	vth_line = <10>;
 };

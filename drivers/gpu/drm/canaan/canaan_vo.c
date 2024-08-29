@@ -468,7 +468,7 @@ static void canaan_vo_set_timing(struct canaan_vo *vo,
 	reg = (0x0 << 16) + 0x0;
 	canaan_vo_write(vo, VO_DISP_VSYNC2_CTL, reg);
 
-	reg = (5 + hsa + hbp + 1) + (((hact + (5 + hsa + hbp + 1)) - 1) << 16);
+	reg = (hbp) + ((hact + hbp - 1) << 16);
 	canaan_vo_write(vo, VO_DISP_XZONE_CTL, reg);
 
 	// set yzone

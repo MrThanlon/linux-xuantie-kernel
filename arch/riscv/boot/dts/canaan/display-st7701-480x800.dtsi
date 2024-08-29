@@ -72,5 +72,10 @@
 				vsync-len = <10>;
 			};
 		};
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
 	};
 };
